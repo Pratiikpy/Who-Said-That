@@ -6,7 +6,6 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { useWalletClient, usePublicClient } from "wagmi";
 import { useMiniKit } from "@coinbase/onchainkit/minikit";
-import { DecryptReveal } from "../../../../components/DecryptReveal";
 import { CONFESSION_VAULT_ABI } from "../../../../contracts/confessionVault";
 import { CONFESSION_VAULT_ADDRESS } from "../../../../lib/constants";
 import {
@@ -21,6 +20,10 @@ import { MAX_GUESSES, HINT_PRICES } from "../../../../lib/constants";
 import { useToast } from "../../../../components/Toast";
 import { useHaptics } from "../../../../hooks/useHaptics";
 import { useConfessionVault } from "../../../../hooks/useConfessionVault";
+import { sound } from "../../../../lib/sound";
+import { ConfessionQuote } from "../../../../components/ConfessionQuote";
+import { HashFingerprint } from "../../../../components/HashFingerprint";
+import RevealSequence from "../../../../components/RevealSequence";
 
 // ─── Inline SVG Icons (no emojis) ──────────────────────────────────
 
@@ -272,8 +275,9 @@ export default function ConfessionDetailPage() {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35, delay: 0.05, ease: [0.25, 0.46, 0.45, 0.94] }}
-        className="card p-5 space-y-4"
+        className="card p-5 space-y-4 relative"
       >
+        <HashFingerprint id={confession.id} className="absolute top-3 right-3" />
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
@@ -305,9 +309,11 @@ export default function ConfessionDetailPage() {
         </div>
 
         {/* Message */}
-        <p className="text-lg text-foreground leading-relaxed font-light italic">
-          &ldquo;{confession.message}&rdquo;
-        </p>
+        <ConfessionQuote>
+          <p className="text-lg text-foreground leading-relaxed confession-text">
+            &ldquo;{confession.message}&rdquo;
+          </p>
+        </ConfessionQuote>
 
         {/* Encryption Badge */}
         {!isAnonymousLink && (
@@ -504,11 +510,13 @@ function GuessSection({
     setGuesses((prev) => [...prev, { username, correct: isCorrect }]);
 
     if (isCorrect) {
+      sound.reveal();
       setRevealedUsername(username);
       setRevealed(true);
       hapticSuccess();
       toast("Identity revealed!", "success");
     } else {
+      sound.wrongGuess();
       hapticError();
       toast(
         guesses.length + 1 >= MAX_GUESSES
@@ -526,32 +534,7 @@ function GuessSection({
 
   if (revealed) {
     return (
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="card p-6 text-center space-y-4"
-        style={{ borderColor: "rgba(34, 197, 94, 0.3)", borderWidth: "1px" }}
-      >
-        <div className="w-14 h-14 mx-auto rounded-full flex items-center justify-center"
-          style={{ background: "rgba(34, 197, 94, 0.1)" }}>
-          <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="#22C55E" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="6 14 12 20 22 8" />
-          </svg>
-        </div>
-        <p className="text-lg font-bold font-display" style={{ color: "#22C55E" }}>
-          Identity Revealed!
-        </p>
-        {/* The FHE Decrypt Animation — characters scramble then lock in */}
-        <div className="py-2">
-          <p className="text-sm text-dim mb-2">It was...</p>
-          <DecryptReveal
-            text={`@${revealedUsername}`}
-            isRevealing={true}
-            className="text-2xl font-bold font-display"
-          />
-        </div>
-        <p className="text-sm text-muted">You figured it out in {guesses.length} {guesses.length === 1 ? "guess" : "guesses"}.</p>
-      </motion.div>
+      <RevealSequence username={revealedUsername} guessCount={guesses.length} />
     );
   }
 

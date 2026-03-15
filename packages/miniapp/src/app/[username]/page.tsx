@@ -295,7 +295,7 @@ export default function ShareLinkPage() {
           </motion.div>
 
           {/* ── Prompt Chips (horizontal scroll) ───────────────── */}
-          <motion.div variants={fadeUp} className="-mx-6">
+          <motion.div variants={fadeUp} className="-mx-6 scroll-fade-x">
             <div
               ref={chipScrollRef}
               className="flex gap-2 overflow-x-auto px-6 pb-1"

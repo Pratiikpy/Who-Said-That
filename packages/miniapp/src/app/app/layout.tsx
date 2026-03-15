@@ -9,6 +9,7 @@ import { Onboarding } from "../../components/Onboarding";
 import { useScrollDirection } from "../../hooks/useScrollDirection";
 import { useTimeTheme } from "../../hooks/useTimeTheme";
 import { useScrollHeader } from "../../hooks/useScrollHeader";
+import CipherGrid from "../../components/CipherGrid";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { isConnected } = useAccount();
@@ -47,14 +48,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-dvh bg-void pb-tabs">
-      {/* Ambient background gradient — shifts color by time of day */}
-      <div
-        className="pointer-events-none fixed inset-0 z-0"
-        aria-hidden="true"
-        style={{
-          background: `radial-gradient(ellipse 80% 50% at 50% 0%, ${gradientColor}, transparent 70%)`,
-        }}
-      />
+      {/* Ambient cipher grid background — shifts color by time of day */}
+      <CipherGrid color={gradientColor} />
 
       {/* Header — personalized like Amazon dark mode */}
       <header

@@ -24,6 +24,11 @@ export function useHaptics() {
     try { sdk?.haptics?.impactOccurred?.("medium"); } catch {}
   }, []);
 
+  const heavy = useCallback(async () => {
+    const sdk = await getSDK();
+    try { sdk?.haptics?.impactOccurred?.("heavy"); } catch {}
+  }, []);
+
   const success = useCallback(async () => {
     const sdk = await getSDK();
     try { sdk?.haptics?.notificationOccurred?.("success"); } catch {}
@@ -39,5 +44,5 @@ export function useHaptics() {
     try { sdk?.haptics?.selectionChanged?.(); } catch {}
   }, []);
 
-  return { tap, submit, success, error, select };
+  return { tap, submit, heavy, success, error, select };
 }

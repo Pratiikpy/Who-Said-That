@@ -343,7 +343,7 @@ export default function InboxPage() {
                         </div>
 
                         {/* Message Preview */}
-                        <p className="text-[15px] text-muted leading-relaxed line-clamp-3 italic font-light">
+                        <p className="text-[15px] text-muted leading-relaxed line-clamp-3 confession-text">
                           &ldquo;{c.message}&rdquo;
                         </p>
 

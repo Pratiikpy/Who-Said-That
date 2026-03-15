@@ -14,6 +14,7 @@ import { useWalletClient, usePublicClient } from "wagmi";
 import { CONFESSION_VAULT_ABI } from "../../../contracts/confessionVault";
 import { CONFESSION_VAULT_ADDRESS } from "../../../lib/constants";
 import type { FarcasterUser } from "../../../lib/neynar";
+import { sound } from "../../../lib/sound";
 
 export default function ComposePage() {
   const router = useRouter();
@@ -127,6 +128,7 @@ export default function ComposePage() {
 
       success();
       setSent(true);
+      sound.sendConfirm();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to send");
       toast(err instanceof Error ? err.message : "Failed to send", "error");
@@ -273,7 +275,7 @@ export default function ComposePage() {
                   onChange={(e) =>
                     setMessage(e.target.value.slice(0, MAX_CONFESSION_LENGTH))
                   }
-                  onFocus={() => tap()}
+                  onFocus={() => { tap(); sound.composeFocus(); }}
                   placeholder="Type something anonymous..."
                   rows={6}
                   autoCapitalize="sentences"
