@@ -1,7 +1,7 @@
 {
-	"name": "cofhe-hardhat-starter",
-	"version": "0.3.1",
-	"description": "Starter repository for Fhenix CoFHE contract development",
+	"name": "who-said-that-contracts",
+	"version": "1.0.0",
+	"description": "ConfessionVault smart contract with FHE encryption on Base",
 	"scripts": {
 		"test": "REPORT_GAS=true hardhat test",
 		"clean": "rimraf ./artifacts ./cache ./coverage ./types ./coverage.json ./deployments/localcofhe",
@@ -31,7 +31,11 @@
 		"//   -------------------": "",
 		"arb-sepolia:deploy-counter": "hardhat deploy-counter --network arb-sepolia",
 		"arb-sepolia:increment-counter": "hardhat increment-counter --network arb-sepolia",
-		"arb-sepolia:reset-counter": "hardhat reset-counter --network arb-sepolia"
+		"arb-sepolia:reset-counter": "hardhat reset-counter --network arb-sepolia",
+		"// -----------------------": "",
+		"//  --- base-sepolia ---": "",
+		"//   -----------------------": "",
+		"base-sepolia:deploy-vault": "hardhat deploy-vault --network base-sepolia"
 	},
 	"repository": {
 		"type": "git",

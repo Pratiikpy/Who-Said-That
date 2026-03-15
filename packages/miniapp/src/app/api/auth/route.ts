@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
       domain: getUrlHost(request),
     });
 
-    console.log("payload", payload);
+    // JWT payload verified successfully
 
     // If the token was valid, `payload.sub` will be the user's Farcaster ID.
     const userFid = payload.sub;

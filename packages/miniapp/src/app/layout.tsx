@@ -1,24 +1,32 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import type { Metadata, Viewport } from "next";
+import { Geist, Geist_Mono, Literata } from "next/font/google";
 import localFont from "next/font/local";
-import { SafeArea } from "@coinbase/onchainkit/minikit";
 import { minikitConfig } from "../../minikit.config";
 import { Providers } from "./providers";
+import { ToastProvider } from "../components/Toast";
 import "./globals.css";
+
+// Agent 10: viewport-fit=cover for safe area insets, maximum-scale=1 for iOS
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  viewportFit: "cover",
+};
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
     title: minikitConfig.miniapp.name,
     description: minikitConfig.miniapp.description,
     other: {
-      "fc:frame": JSON.stringify({
-        version: minikitConfig.miniapp.version,
+      "fc:miniapp": JSON.stringify({
+        version: "next",
         imageUrl: minikitConfig.miniapp.heroImageUrl,
         button: {
-          title: ` ${minikitConfig.miniapp.name}`,
+          title: minikitConfig.miniapp.name,
           action: {
+            type: "launch_miniapp",
             name: `Launch ${minikitConfig.miniapp.name}`,
-            type: "launch_frame",
           },
         },
       }),
@@ -36,23 +44,16 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const literata = Literata({
+  variable: "--font-literata",
+  subsets: ["latin"],
+  style: ["normal", "italic"],
+  weight: ["300", "400"],
+});
+
+// Agent 1: Only load Medium + Bold weights (drop 4 unused weights)
 const clashDisplay = localFont({
   src: [
-    {
-      path: "../../public/fonts/WEB/fonts/ClashDisplay-Extralight.woff2",
-      weight: "200",
-      style: "normal",
-    },
-    {
-      path: "../../public/fonts/WEB/fonts/ClashDisplay-Light.woff2",
-      weight: "300",
-      style: "normal",
-    },
-    {
-      path: "../../public/fonts/WEB/fonts/ClashDisplay-Regular.woff2",
-      weight: "400",
-      style: "normal",
-    },
     {
       path: "../../public/fonts/WEB/fonts/ClashDisplay-Medium.woff2",
       weight: "500",
@@ -81,10 +82,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geist.variable} ${geistMono.variable} ${clashDisplay.variable}`}
+        className={`${geist.variable} ${geistMono.variable} ${clashDisplay.variable} ${literata.variable}`}
       >
         <Providers>
-          <SafeArea>{children}</SafeArea>
+          <ToastProvider>
+            {children}
+          </ToastProvider>
         </Providers>
       </body>
     </html>

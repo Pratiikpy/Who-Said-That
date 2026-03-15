@@ -4,11 +4,6 @@ const ROOT_URL =
     ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
     : "http://localhost:3000");
 
-/**
- * MiniApp configuration object. Must follow the Farcaster MiniApp specification.
- *
- * @see {@link https://miniapps.farcaster.xyz/docs/guides/publishing}
- */
 export const minikitConfig = {
   accountAssociation: {
     header: "",
@@ -17,22 +12,23 @@ export const minikitConfig = {
   },
   miniapp: {
     version: "1",
-    name: "Fhenix MiniApp Demo",
-    subtitle: "Privacy onchain",
-    description: "Experience Fully Homomorphic Encryption powered dApps",
-    screenshotUrls: [`${ROOT_URL}/screenshot-portrait.png`],
-    iconUrl: `${ROOT_URL}/blue-icon.png`,
-    splashImageUrl: `${ROOT_URL}/blue-hero.png`,
-    splashBackgroundColor: "#011623",
+    name: "Who Said That",
+    subtitle: "Anonymous encrypted confessions",
+    description:
+      "Send anonymous confessions encrypted with FHE. Recipients guess who sent them with AI hints.",
+    screenshotUrls: [] as string[],
+    iconUrl: `${ROOT_URL}/icon.png`,
+    splashImageUrl: `${ROOT_URL}/splash.png`,
+    splashBackgroundColor: "#0D0B14",
     homeUrl: ROOT_URL,
     webhookUrl: `${ROOT_URL}/api/webhook`,
     primaryCategory: "social",
-    tags: ["fhenix", "fhe", "encryption", "privacy", "defi"],
-    heroImageUrl: `${ROOT_URL}/blue-hero.png`,
-    tagline: "Privacy onchain",
-    ogTitle: "Fhenix MiniApp Demo",
+    tags: ["anonymous", "confessions", "fhe", "encryption", "social", "ai"],
+    heroImageUrl: `${ROOT_URL}/og.png`,
+    tagline: "Who sent this?",
+    ogTitle: "Who Said That",
     ogDescription:
-      "Experience confidential computing powered by Fully Homomorphic Encryption",
-    ogImageUrl: `${ROOT_URL}/blue-hero.png`,
+      "Anonymous encrypted confessions on Base. Guess who sent them.",
+    ogImageUrl: `${ROOT_URL}/og.png`,
   },
 } as const;

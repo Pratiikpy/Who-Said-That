@@ -1,7 +1,7 @@
 {
-  "name": "cofhe-miniapp-template",
+  "name": "who-said-that",
   "version": "1.0.0",
-  "description": "Cofhe + Base/miniapp template",
+  "description": "Anonymous encrypted confessions on Base with FHE",
   "scripts": {
     "dev:miniapp": "cd packages/miniapp && npm run dev",
     "build:miniapp": "cd packages/miniapp && npm run build",
