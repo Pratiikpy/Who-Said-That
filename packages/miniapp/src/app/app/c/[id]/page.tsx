@@ -333,7 +333,7 @@ export default function ConfessionDetailPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35, delay: 0.12, ease: [0.25, 0.46, 0.45, 0.94] }}
         >
-          <GuessSection confessionId={id} onHintRefresh={fetchData} />
+          <GuessSection confessionId={id} onchainId={confession.onchain_id} onHintRefresh={fetchData} />
         </motion.div>
       )}
 
@@ -381,9 +381,11 @@ export default function ConfessionDetailPage() {
 
 function GuessSection({
   confessionId: _confessionId,
+  onchainId,
   onHintRefresh: _onHintRefresh,
 }: {
   confessionId: string;
+  onchainId: number | null;
   onHintRefresh: () => void;
 }) {
   const { toast } = useToast();
@@ -424,11 +426,10 @@ function GuessSection({
         return;
       }
 
-      // Step 2: Try on-chain FHE guess
-      const onchainId = parseInt(_confessionId, 10);
+      // Step 2: Try on-chain FHE guess (use actual onchain_id, not UUID)
       let usedOnchain = false;
 
-      if (!isNaN(onchainId) && onchainId > 0 && walletClient && publicClient) {
+      if (onchainId && onchainId > 0 && walletClient && publicClient) {
         try {
           // Encrypt the guessed FID with CoFHE
           const { cofhejs, Encryptable } = await import("cofhejs/web");
@@ -689,11 +690,11 @@ function HintSection({
         }
       }
 
-      // Generate the AI hint via NVIDIA NIM API
-      const hintRes = await fetch(`/api/hints/${confessionId}`, {
+      // Generate the AI hint via NVIDIA NIM API (authenticated)
+      const { authFetch } = await import("../../../../lib/api");
+      const hintRes = await authFetch(`/api/hints/${confessionId}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ hintLevel: level, buyerFid: 0 }),
+        body: JSON.stringify({ hintLevel: level }),
       });
 
       if (hintRes.ok) {
@@ -842,9 +843,9 @@ function ThreadSection({
     tap();
 
     try {
-      const res = await fetch(`/api/threads/${confessionId}`, {
+      const { authFetch } = await import("../../../../lib/api");
+      const res = await authFetch(`/api/threads/${confessionId}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           senderRole: "recipient",
           message: text,

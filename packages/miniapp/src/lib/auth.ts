@@ -47,9 +47,9 @@ export async function verifyAuth(request: NextRequest): Promise<AuthResult> {
     const quickAuthClient = createClient();
 
     // Determine the app's domain
+    // Quick Auth expects just the hostname, NOT the full URL with protocol
     const host = request.headers.get("host") || "localhost:3000";
-    const proto = request.headers.get("x-forwarded-proto") || "https";
-    const domain = `${proto}://${host}`;
+    const domain = host;
 
     const payload = await quickAuthClient.verifyJwt({
       token,

@@ -238,7 +238,7 @@ export default function PublicFeedPage() {
   );
 }
 
-function PublicPostCard({ post, reactorFid }: { post: DbConfession; reactorFid: number }) {
+function PublicPostCard({ post, reactorFid: _reactorFid }: { post: DbConfession; reactorFid: number }) {
   const { tap } = useHaptics();
   const [reactions, setReactions] = useState<Record<string, number>>({});
   const [activeReaction, setActiveReaction] = useState<string | null>(null);
@@ -277,12 +277,11 @@ function PublicPostCard({ post, reactorFid }: { post: DbConfession; reactorFid: 
 
     // Persist to API
     try {
-      await fetch("/api/reactions", {
+      const { authFetch } = await import("../../../lib/api");
+      await authFetch("/api/reactions", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           confessionId: post.id,
-          reactorFid,
           reactionType: type,
         }),
       });
