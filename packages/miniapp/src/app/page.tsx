@@ -119,20 +119,7 @@ function ArrowRightIcon({ className = "w-5 h-5" }: { className?: string }) {
 
 /* ── Animation Variants ──────────────────────────────────────────────── */
 
-const stagger = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.1 } },
-};
-
-const fadeUp = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0 },
-};
-
-const scaleIn = {
-  hidden: { opacity: 0, scale: 0.85 },
-  visible: { opacity: 1, scale: 1 },
-};
+// Animations removed — elements render visible immediately for Farcaster WebView compatibility
 
 /* ── Features Data ───────────────────────────────────────────────────── */
 
@@ -185,21 +172,15 @@ export default function LandingPage() {
   return (
     <div className="min-h-dvh flex flex-col bg-void">
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-16">
-        <motion.div
-          className="w-full max-w-sm space-y-12"
-          variants={stagger}
-          initial="hidden"
-          animate="visible"
-        >
+        <div className="w-full max-w-sm space-y-12">
           {/* ── Hero ──────────────────────────────────────────────── */}
-          <motion.div variants={fadeUp} className="text-center space-y-5">
-            <motion.div
-              variants={scaleIn}
+          <div className="text-center space-y-5">
+            <div
               className="w-16 h-16 mx-auto rounded-2xl bg-accent flex items-center justify-center"
               style={{ boxShadow: "0 0 40px rgba(139, 92, 246, 0.2)" }}
             >
               <AppIcon />
-            </motion.div>
+            </div>
 
             <div className="space-y-3">
               <h1 className="text-[34px] font-bold font-display tracking-tight leading-[1.1]">
@@ -209,10 +190,10 @@ export default function LandingPage() {
                 Anonymous confessions. Encrypted onchain. AI-powered hints.
               </p>
             </div>
-          </motion.div>
+          </div>
 
           {/* ── Confession Preview Card ───────────────────────────── */}
-          <motion.div variants={fadeUp} className="card p-6">
+          <div className="card p-6">
             <div className="flex items-center gap-2 mb-4">
               <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
               <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-accent-soft">
@@ -223,7 +204,7 @@ export default function LandingPage() {
             <AnimatePresence mode="wait">
               <motion.div
                 key={idx}
-                initial={{ opacity: 0, y: 10 }}
+                initial={false}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
@@ -246,10 +227,10 @@ export default function LandingPage() {
                 Encrypted
               </span>
             </div>
-          </motion.div>
+          </div>
 
           {/* ── CTA Button ───────────────────────────────────────── */}
-          <motion.div variants={fadeUp} className="space-y-3">
+          <div className="space-y-3">
             <button
               onClick={() => router.push("/app")}
               className="btn btn-primary w-full text-base font-semibold"
@@ -261,14 +242,13 @@ export default function LandingPage() {
             <p className="text-sm text-dim text-center">
               Start receiving anonymous confessions in seconds
             </p>
-          </motion.div>
+          </div>
 
           {/* ── Feature Blocks ───────────────────────────────────── */}
-          <motion.div variants={fadeUp} className="space-y-3">
+          <div className="space-y-3">
             {FEATURES.map((feature, i) => (
-              <motion.div
+              <div
                 key={i}
-                variants={fadeUp}
                 className="card p-5 flex items-start gap-4"
               >
                 <div className="w-10 h-10 rounded-xl bg-surface-elevated border border-border-subtle flex items-center justify-center shrink-0">
@@ -282,10 +262,10 @@ export default function LandingPage() {
                     {feature.description}
                   </p>
                 </div>
-              </motion.div>
+              </div>
             ))}
-          </motion.div>
-        </motion.div>
+          </div>
+        </div>
       </div>
 
       {/* ── Footer ─────────────────────────────────────────────────── */}
