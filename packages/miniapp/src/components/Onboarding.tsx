@@ -43,10 +43,14 @@ export function Onboarding() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    // Only show once per device
+    // Only show once per device — delay slightly so app renders first
     if (typeof window !== "undefined") {
       const done = localStorage.getItem(STORAGE_KEY);
-      if (!done) setVisible(true);
+      if (!done) {
+        // Show after 2 seconds so the user sees the app first
+        const timer = setTimeout(() => setVisible(true), 2000);
+        return () => clearTimeout(timer);
+      }
     }
   }, []);
 
@@ -70,12 +74,15 @@ export function Onboarding() {
 
   return (
     <AnimatePresence>
+      {visible && (
       <motion.div
+        key="onboarding-overlay"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="fixed inset-0 z-[200] flex items-end justify-center"
         style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(8px)" }}
+        onClick={handleSkip}
       >
         <motion.div
           initial={{ y: 100, opacity: 0 }}
@@ -84,6 +91,7 @@ export function Onboarding() {
           transition={{ type: "spring", damping: 25, stiffness: 300 }}
           className="w-full max-w-sm mx-4 mb-8 rounded-2xl p-6 space-y-5"
           style={{ background: "#141416", border: "1px solid #27272A" }}
+          onClick={(e) => e.stopPropagation()}
         >
           {/* Progress dots */}
           <div className="flex justify-center gap-2">
@@ -146,6 +154,7 @@ export function Onboarding() {
           </div>
         </motion.div>
       </motion.div>
+      )}
     </AnimatePresence>
   );
 }
