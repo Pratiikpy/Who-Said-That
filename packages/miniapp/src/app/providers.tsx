@@ -1,26 +1,18 @@
 "use client";
-import { ReactNode, useState } from "react";
+import { ReactNode } from "react";
 import { baseSepolia } from "wagmi/chains";
 import { MiniKitProvider } from "@coinbase/onchainkit/minikit";
 import "@coinbase/onchainkit/styles.css";
-import { createConfig, WagmiProvider, http } from "wagmi";
-import { injected } from "wagmi/connectors";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { farcasterMiniApp as miniAppConnector } from "@farcaster/miniapp-wagmi-connector";
 
-export const wagmiConfig = createConfig({
-  chains: [baseSepolia],
-  connectors: [miniAppConnector(), injected()],
-  ssr: true,
-  multiInjectedProviderDiscovery: false,
-  transports: {
-    [baseSepolia.id]: http(),
-  },
-});
+// MiniKitProvider internally creates its own WagmiProvider, QueryClientProvider,
+// and AutoConnect component. It uses farcasterFrame() connector when inside a
+// Mini App (detected via sdk.context), or coinbaseWallet() when outside.
+//
+// IMPORTANT: Do NOT wrap children in a second WagmiProvider or QueryClientProvider.
+// Doing so creates two separate wagmi instances — AutoConnect connects one while
+// the app reads from the other, causing isConnected to always be false in Farcaster.
 
 export function Providers({ children }: { children: ReactNode }) {
-  const [queryClient] = useState(() => new QueryClient());
-
   return (
     <MiniKitProvider
       chain={baseSepolia}
@@ -34,11 +26,7 @@ export function Providers({ children }: { children: ReactNode }) {
         },
       }}
     >
-      <WagmiProvider config={wagmiConfig}>
-        <QueryClientProvider client={queryClient}>
-          {children}
-        </QueryClientProvider>
-      </WagmiProvider>
+      {children}
     </MiniKitProvider>
   );
 }

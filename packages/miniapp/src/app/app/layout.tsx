@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { useAccount } from "wagmi";
 import { useMiniKit } from "@coinbase/onchainkit/minikit";
 import { useCofhe } from "../../hooks/useCofhe";
@@ -18,6 +19,31 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { shouldHideNav } = useScrollDirection();
   const { gradientColor } = useTimeTheme();
   const { bgBlur, bgOpacity, inlineTitleOpacity } = useScrollHeader();
+
+  // ── Sync user profile to Supabase on first load ──────────────────
+  // This ensures the users table has a record with the correct FID so
+  // that anonymous confessions sent via share links can be matched.
+  const hasSynced = useRef(false);
+  const user = context?.user;
+
+  useEffect(() => {
+    if (hasSynced.current || !user?.fid || !user?.username) return;
+    hasSynced.current = true;
+
+    fetch("/api/users/sync", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        fid: user.fid,
+        username: user.username,
+        displayName: user.displayName || null,
+        pfpUrl: user.pfpUrl || null,
+      }),
+    }).catch(() => {
+      // Fire-and-forget — don't block the UI if sync fails
+      hasSynced.current = false; // allow retry on next render
+    });
+  }, [user?.fid, user?.username, user?.displayName, user?.pfpUrl]);
 
   if (!isConnected) {
     return (
@@ -41,7 +67,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  const user = context?.user;
   const greeting = user?.displayName
     ? `Hi, ${user.displayName.split(" ")[0]}!`
     : "Welcome back!";

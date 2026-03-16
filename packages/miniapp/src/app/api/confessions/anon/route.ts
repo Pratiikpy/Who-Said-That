@@ -81,9 +81,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true });
     }
 
+    // Resolve the recipient FID from platform_id.
+    // If the user was synced from Farcaster, platform_id is their numeric FID as a string.
+    // If the user is still a placeholder (created by a previous anon send before they
+    // opened the app), platform_id might be a username string — parseInt returns NaN.
+    const resolvedFid = parseInt(recipient.platform_id);
+    const recipientFid = Number.isFinite(resolvedFid) && resolvedFid > 0
+      ? resolvedFid
+      : 0; // will be retroactively updated when user syncs via /api/users/sync
+
     // Store confession for existing user
     const { error } = await supabase.from("confessions").insert({
-      recipient_fid: parseInt(recipient.platform_id) || 0,
+      recipient_fid: recipientFid,
       message: message.trim(),
       platform: "anonymous_link",
       is_anonymous_link: true,
@@ -98,8 +107,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Send push notification to recipient (fire-and-forget)
-    const recipientFid = parseInt(recipient.platform_id) || 0;
-    if (recipientFid) {
+    if (recipientFid > 0) {
       const appUrl =
         process.env.NEXT_PUBLIC_URL ||
         (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
