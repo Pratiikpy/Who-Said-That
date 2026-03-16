@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Store confession with the best FID we have
-      const { error } = await supabase.from("confessions").insert({
+      const { data: inserted, error } = await supabase.from("confessions").insert({
         recipient_fid: resolvedFid,
         message: message.trim(),
         platform: "anonymous_link",
@@ -103,14 +103,14 @@ export async function POST(request: NextRequest) {
         is_public: false,
         moderation_status: "approved",
         moderation_score: modResult.score,
-      });
+      }).select("id").single();
 
-      if (error) {
+      if (error || !inserted) {
         console.error("Insert error:", error);
         return NextResponse.json({ error: "Failed to send" }, { status: 500 });
       }
 
-      return NextResponse.json({ success: true });
+      return NextResponse.json({ success: true, confessionId: inserted.id });
     }
 
     // Resolve the recipient FID from platform_id.
@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
       : 0; // will be retroactively updated when user syncs via /api/users/sync
 
     // Store confession for existing user
-    const { error } = await supabase.from("confessions").insert({
+    const { data: inserted, error } = await supabase.from("confessions").insert({
       recipient_fid: recipientFid,
       message: message.trim(),
       platform: "anonymous_link",
@@ -131,9 +131,9 @@ export async function POST(request: NextRequest) {
       is_public: false,
       moderation_status: "approved",
       moderation_score: modResult.score,
-    });
+    }).select("id").single();
 
-    if (error) {
+    if (error || !inserted) {
       console.error("Insert error:", error);
       return NextResponse.json({ error: "Failed to send" }, { status: 500 });
     }
@@ -152,7 +152,7 @@ export async function POST(request: NextRequest) {
       ).catch(() => {});
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, confessionId: inserted.id });
   } catch (err) {
     console.error("Anonymous confession error:", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

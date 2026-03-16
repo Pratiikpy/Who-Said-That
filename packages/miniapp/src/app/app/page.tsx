@@ -2,14 +2,13 @@
 
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useMiniKit } from "@coinbase/onchainkit/minikit";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence } from "framer-motion";
 import { supabase, setCurrentFid, type DbConfession } from "../../lib/supabase";
 import { copyToClipboard, getTimeAgo } from "../../lib/utils";
 import { useToast } from "../../components/Toast";
 import { useHaptics } from "../../hooks/useHaptics";
 import Link from "next/link";
 import { AnimatedNumber } from "../../components/AnimatedNumber";
-import { SPRING_SNAPPY, fadeUp, staggerContainer } from "../../lib/animations";
 import { SmartEmptyState } from "../../components/SmartEmptyState";
 import { PullToRefresh } from "../../components/PullToRefresh";
 import { AmbientCard } from "../../components/AmbientCard";
@@ -200,19 +199,11 @@ export default function InboxPage() {
     toast("Link copied!", "success");
   };
 
-  // ─── Animation Variants (from animations.ts) ──────────────────
-  // Using staggerContainer and fadeUp from the animation system
-
-  const stagger = staggerContainer(0.06);
-
   return (
     <PullToRefresh onRefresh={fetchInbox}>
       <div className="px-5 py-4 space-y-6">
         {/* ── Share Link Card ────────────────────────────────────── */}
-        <motion.button
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={SPRING_SNAPPY}
+        <button
           onClick={handleCopyLink}
           className="w-full card p-4 text-left active:scale-[0.98] transition-transform"
           style={{ WebkitTapHighlightColor: "transparent" }}
@@ -228,7 +219,7 @@ export default function InboxPage() {
               <LinkIcon className="text-accent" />
             </div>
           </div>
-        </motion.button>
+        </button>
 
         {/* ── Stats Row ──────────────────────────────────────────── */}
         {loading ? (
@@ -297,20 +288,12 @@ export default function InboxPage() {
         )}
 
         {/* ── Confession List ────────────────────────────────────── */}
-        <AnimatePresence mode="popLayout">
+        <AnimatePresence>
           {!loading && confessions.length > 0 && (
-            <motion.div
-              className="space-y-3"
-              variants={stagger}
-              initial="initial"
-              animate="animate"
-            >
+            <div className="space-y-3">
               {confessions.map((c: OptimisticItem<DbConfession>) => (
-                <motion.div
+                <div
                   key={c.id}
-                  variants={fadeUp}
-                  transition={SPRING_SNAPPY}
-                  layout
                   style={c.__pending ? { opacity: 0.6 } : undefined}
                 >
                   <ConfessionBorder type="default">
@@ -369,9 +352,9 @@ export default function InboxPage() {
                       </div>
                     </Link>
                   </ConfessionBorder>
-                </motion.div>
+                </div>
               ))}
-            </motion.div>
+            </div>
           )}
         </AnimatePresence>
       </div>

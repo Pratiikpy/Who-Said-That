@@ -255,28 +255,17 @@ export default function ConfessionDetailPage() {
   return (
     <div className="px-5 py-4 pb-8 space-y-5">
       {/* ── Back Button (48px touch target) ──────────────────── */}
-      <motion.div
-        initial={{ opacity: 0, x: -8 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.25 }}
+      <Link
+        href="/app"
+        className="inline-flex items-center gap-1 text-muted text-sm min-h-[48px] active:text-foreground transition-colors"
+        style={{ WebkitTapHighlightColor: "transparent" }}
       >
-        <Link
-          href="/app"
-          className="inline-flex items-center gap-1 text-muted text-sm min-h-[48px] active:text-foreground transition-colors"
-          style={{ WebkitTapHighlightColor: "transparent" }}
-        >
-          <ChevronLeftIcon />
-          Back
-        </Link>
-      </motion.div>
+        <ChevronLeftIcon />
+        Back
+      </Link>
 
       {/* ── Confession Card ──────────────────────────────────── */}
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, delay: 0.05, ease: [0.25, 0.46, 0.45, 0.94] }}
-        className="card p-5 space-y-4 relative"
-      >
+      <div className="card p-5 space-y-4 relative">
         <HashFingerprint id={confession.id} className="absolute top-3 right-3" />
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -324,46 +313,23 @@ export default function ConfessionDetailPage() {
             </span>
           </div>
         )}
-      </motion.div>
+      </div>
 
       {/* ── Guess Section ────────────────────────────────────── */}
       {!isAnonymousLink && (
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35, delay: 0.12, ease: [0.25, 0.46, 0.45, 0.94] }}
-        >
-          <GuessSection confessionId={id} onchainId={confession.onchain_id} onHintRefresh={fetchData} />
-        </motion.div>
+        <GuessSection confessionId={id} onchainId={confession.onchain_id} onHintRefresh={fetchData} />
       )}
 
       {/* ── Hint Section ─────────────────────────────────────── */}
       {!isAnonymousLink && (
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35, delay: 0.18, ease: [0.25, 0.46, 0.45, 0.94] }}
-        >
-          <HintSection hints={hints} confessionId={id} onUnlock={fetchData} />
-        </motion.div>
+        <HintSection hints={hints} confessionId={id} onUnlock={fetchData} />
       )}
 
       {/* ── Thread Section ───────────────────────────────────── */}
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, delay: 0.24, ease: [0.25, 0.46, 0.45, 0.94] }}
-      >
-        <ThreadSection thread={thread} confessionId={id} />
-      </motion.div>
+      <ThreadSection thread={thread} confessionId={id} />
 
       {/* ── Share ────────────────────────────────────────────── */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.3 }}
-        className="pt-1"
-      >
+      <div className="pt-1">
         <button
           onClick={handleCopyLink}
           className="w-full card p-4 flex items-center justify-center gap-2 text-sm font-medium text-muted active:scale-[0.98] transition-transform min-h-[48px]"
@@ -372,7 +338,7 @@ export default function ConfessionDetailPage() {
           <CopyIcon />
           Copy Link
         </button>
-      </motion.div>
+      </div>
     </div>
   );
 }

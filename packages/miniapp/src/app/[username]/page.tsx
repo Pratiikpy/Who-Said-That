@@ -89,6 +89,22 @@ function XCircleIcon({ className = "w-4 h-4" }: { className?: string }) {
   );
 }
 
+function ChatBubbleIcon({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+    </svg>
+  );
+}
+
 function LinkIcon({ className = "w-5 h-5" }: { className?: string }) {
   return (
     <svg
@@ -160,6 +176,7 @@ export default function ShareLinkPage() {
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [confessionId, setConfessionId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const chipScrollRef = useRef<HTMLDivElement>(null);
@@ -194,6 +211,8 @@ export default function ShareLinkPage() {
         throw new Error(data.error || "Failed to send");
       }
 
+      const data = await res.json();
+      if (data.confessionId) setConfessionId(data.confessionId);
       setSent(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
@@ -240,11 +259,29 @@ export default function ShareLinkPage() {
               </p>
             </motion.div>
 
+            {confessionId && (
+              <motion.div variants={fadeUp}>
+                <Link href={`/t/${confessionId}`}>
+                  <div className="card p-4 flex items-center gap-3 text-left">
+                    <div className="w-10 h-10 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center shrink-0">
+                      <ChatBubbleIcon className="w-5 h-5 text-accent-soft" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-foreground">Check for replies</p>
+                      <p className="text-xs text-muted mt-0.5">Bookmark this link to see their response</p>
+                    </div>
+                    <ArrowRightIcon className="w-4 h-4 text-dim shrink-0" />
+                  </div>
+                </Link>
+              </motion.div>
+            )}
+
             <motion.div variants={fadeUp} className="space-y-3 pt-2">
               <button
                 onClick={() => {
                   setSent(false);
                   setMessage("");
+                  setConfessionId(null);
                 }}
                 className="btn w-full bg-surface border border-border-subtle text-foreground hover:bg-surface-elevated text-base"
               >
