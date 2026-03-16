@@ -45,13 +45,32 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (!recipient) {
-      // If recipient not found, create a placeholder entry
-      // This allows share links to work even before recipient signs up
+      // Try to resolve the username to a FID via Neynar before creating placeholder
+      let resolvedFid = 0;
+      try {
+        const neynarKey = process.env.NEYNAR_API_KEY;
+        if (neynarKey) {
+          const neynarRes = await fetch(
+            `https://api.neynar.com/v2/farcaster/user/by_username?username=${encodeURIComponent(recipientUsername)}`,
+            { headers: { accept: "application/json", "x-api-key": neynarKey } }
+          );
+          if (neynarRes.ok) {
+            const neynarData = await neynarRes.json();
+            if (neynarData.user?.fid) {
+              resolvedFid = neynarData.user.fid;
+            }
+          }
+        }
+      } catch {
+        // Neynar lookup failed — use 0 and fix later via sync
+      }
+
+      // Create user record with resolved FID (or 0 if lookup failed)
       const { data: newUser, error: createErr } = await supabase
         .from("users")
         .insert({
-          platform: "pending",
-          platform_id: recipientUsername,
+          platform: resolvedFid ? "farcaster" : "pending",
+          platform_id: resolvedFid ? String(resolvedFid) : recipientUsername,
           username: recipientUsername,
           share_slug: recipientUsername,
         })
@@ -59,12 +78,25 @@ export async function POST(request: NextRequest) {
         .single();
 
       if (createErr || !newUser) {
-        return NextResponse.json({ error: "Recipient not found" }, { status: 404 });
+        // Might already exist due to race condition — try to find it
+        const { data: existing } = await supabase
+          .from("users")
+          .select("*")
+          .eq("username", recipientUsername)
+          .single();
+
+        if (!existing) {
+          return NextResponse.json({ error: "Recipient not found" }, { status: 404 });
+        }
+
+        // Use existing record's platform_id for FID
+        const existingFid = parseInt(existing.platform_id);
+        resolvedFid = Number.isFinite(existingFid) ? existingFid : resolvedFid;
       }
 
-      // Store confession for the new placeholder user
+      // Store confession with the best FID we have
       const { error } = await supabase.from("confessions").insert({
-        recipient_fid: 0, // will be updated when user signs up
+        recipient_fid: resolvedFid,
         message: message.trim(),
         platform: "anonymous_link",
         is_anonymous_link: true,

@@ -123,7 +123,8 @@ export function PullToRefresh({ onRefresh, children }: PullToRefreshProps) {
 
       touchStartY.current = e.touches[0].clientY;
       isTracking.current = true;
-      setState("pulling");
+      // Don't set state to "pulling" yet — wait for actual movement
+      // Setting state on touchstart causes re-renders that can interfere with click events
     },
     [state, getScrollTop],
   );
@@ -149,8 +150,11 @@ export function PullToRefresh({ onRefresh, children }: PullToRefreshProps) {
         return;
       }
 
-      // Prevent native overscroll/bounce in Farcaster WebView
-      e.preventDefault();
+      // Only prevent default when actually pulling (not on tiny tap movements)
+      // This preserves click events for buttons while preventing overscroll during pulls
+      if (deltaY > 10) {
+        e.preventDefault();
+      }
 
       // Apply rubber-band resistance: diminishing returns past threshold
       const resistedDistance = deltaY < THRESHOLD
