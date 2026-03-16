@@ -13,7 +13,7 @@ export const minikitConfig = {
   miniapp: {
     version: "1",
     name: "Who Said That",
-    subtitle: "Anonymous encrypted confessions",
+    subtitle: "Anonymous confessions on Base",
     description:
       "Send anonymous confessions encrypted with FHE. Recipients guess who sent them with AI hints.",
     screenshotUrls: [] as string[],
@@ -23,7 +23,7 @@ export const minikitConfig = {
     homeUrl: ROOT_URL,
     webhookUrl: `${ROOT_URL}/api/webhook`,
     primaryCategory: "social",
-    tags: ["anonymous", "confessions", "fhe", "encryption", "social", "ai"],
+    tags: ["anonymous", "confessions", "fhe", "social", "ai"],
     heroImageUrl: `${ROOT_URL}/og.png`,
     tagline: "Who sent this?",
     ogTitle: "Who Said That",
