@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
 import { useSafeMiniKit } from "../hooks/useSafeMiniKit";
+import { useMiniKit } from "@coinbase/onchainkit/minikit";
 import { motion, AnimatePresence } from "framer-motion";
 
 const CONFESSIONS = [
@@ -156,15 +157,18 @@ const FEATURES = [
 /* ── Page Component ──────────────────────────────────────────────────── */
 
 export default function LandingPage() {
-  const { isFrameReady, setFrameReady, context } = useSafeMiniKit();
+  const { isFrameReady: _safeReady, setFrameReady: safeSetReady, context } = useSafeMiniKit();
+  const { setFrameReady: onchainSetReady } = useMiniKit();
   const { isConnected } = useAccount();
   const router = useRouter();
   const [idx, setIdx] = useState(0);
   const intervalRef = useRef<NodeJS.Timeout>(undefined);
 
   useEffect(() => {
-    if (!isFrameReady) setFrameReady();
-  }, [setFrameReady, isFrameReady]);
+    // Signal ready to BOTH OnchainKit MiniKitProvider AND Farcaster SDK
+    onchainSetReady();
+    safeSetReady();
+  }, [onchainSetReady, safeSetReady]);
 
   useEffect(() => {
     if (context?.user?.fid && isConnected) router.push("/app");
