@@ -20,6 +20,7 @@ export async function generateMetadata(): Promise<Metadata> {
     title: minikitConfig.miniapp.name,
     description: minikitConfig.miniapp.description,
     other: {
+      "base:app_id": "69b7f2693371bf602acd7d68",
       "fc:miniapp": JSON.stringify({
         version: "next",
         imageUrl: minikitConfig.miniapp.heroImageUrl,
