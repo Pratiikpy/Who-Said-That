@@ -4,6 +4,7 @@ import localFont from "next/font/local";
 import { minikitConfig } from "../../minikit.config";
 import { Providers } from "./providers";
 import { ToastProvider } from "../components/Toast";
+import { MiniAppReady } from "../components/MiniAppReady";
 import "./globals.css";
 
 // Agent 10: viewport-fit=cover for safe area insets, maximum-scale=1 for iOS
@@ -85,6 +86,7 @@ export default function RootLayout({
         className={`${geist.variable} ${geistMono.variable} ${clashDisplay.variable} ${literata.variable}`}
       >
         <Providers>
+          <MiniAppReady />
           <ToastProvider>
             {children}
           </ToastProvider>
