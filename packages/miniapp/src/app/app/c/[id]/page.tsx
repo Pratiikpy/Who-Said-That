@@ -253,7 +253,7 @@ export default function ConfessionDetailPage() {
   const isAnonymousLink = confession.is_anonymous_link;
 
   return (
-    <div className="px-5 py-4 space-y-5">
+    <div className="px-5 py-4 pb-8 space-y-5">
       {/* ── Back Button (48px touch target) ──────────────────── */}
       <motion.div
         initial={{ opacity: 0, x: -8 }}
@@ -880,19 +880,34 @@ function ThreadSection({
     tap();
 
     try {
-      const { authFetch } = await import("../../../../lib/api");
-      const res = await authFetch(`/api/threads/${confessionId}`, {
-        method: "POST",
-        body: JSON.stringify({
-          senderRole: "recipient",
-          message: text,
-        }),
-      });
+      // Try authenticated request first, fall back to plain fetch
+      let res: Response;
+      try {
+        const { authFetch } = await import("../../../../lib/api");
+        res = await authFetch(`/api/threads/${confessionId}`, {
+          method: "POST",
+          body: JSON.stringify({
+            senderRole: "recipient",
+            message: text,
+          }),
+        });
+      } catch {
+        // authFetch import or call failed — use plain fetch
+        res = await fetch(`/api/threads/${confessionId}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            senderRole: "recipient",
+            message: text,
+          }),
+        });
+      }
 
       if (res.ok) {
         setReply("");
       } else {
-        toast("Failed to send reply.", "error");
+        const errData = await res.json().catch(() => ({}));
+        toast(errData.error || "Failed to send reply.", "error");
       }
     } catch {
       toast("Failed to send reply.", "error");

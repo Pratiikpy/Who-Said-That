@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabase } from "../../../../lib/supabase";
 import { verifyAuth, isRateLimited, rateLimitResponse } from "../../../../lib/auth";
+import { sendNotification } from "../../../../lib/notifications";
 
 export const dynamic = "force-dynamic";
 
-// Add a reply to a confession thread — requires JWT auth
+// Add a reply to a confession thread
+// Auth is optional: authenticated users get FID-verified, unauthenticated
+// users can still reply (rate-limited by IP).
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -12,12 +15,12 @@ export async function POST(
   try {
     if (isRateLimited(request, 20, 60_000)) return rateLimitResponse();
 
+    // Try auth — but don't block if it fails (Quick Auth isn't available everywhere)
     const auth = await verifyAuth(request);
-    if (auth.error) return auth.error;
+    const senderFid = auth.fid; // null if auth failed
 
     const { id: confessionId } = await params;
     const { senderRole, message } = await request.json();
-    const senderFid = auth.fid; // Use verified FID
 
     if (!message?.trim()) {
       return NextResponse.json({ error: "Message required" }, { status: 400 });
@@ -44,8 +47,15 @@ export async function POST(
       return NextResponse.json({ error: "Confession not found" }, { status: 404 });
     }
 
-    // Basic auth: verify the sender is either the recipient or the original sender
-    if (senderRole === "recipient" && senderFid && confession.recipient_fid !== senderFid) {
+    // Authorization: only enforce FID check when auth succeeded AND
+    // recipient_fid is actually set (non-zero). Share link confessions
+    // often have recipient_fid=0 until the user syncs.
+    if (
+      senderRole === "recipient" &&
+      senderFid &&
+      confession.recipient_fid > 0 &&
+      confession.recipient_fid !== senderFid
+    ) {
       return NextResponse.json({ error: "Not authorized" }, { status: 403 });
     }
 
@@ -61,6 +71,29 @@ export async function POST(
 
     if (error) {
       return NextResponse.json({ error: "Failed to send reply" }, { status: 500 });
+    }
+
+    // Notify the other party (fire-and-forget)
+    const appUrl =
+      process.env.NEXT_PUBLIC_URL ||
+      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+
+    if (senderRole === "sender" && confession.recipient_fid > 0) {
+      // Sender replied → notify the recipient
+      sendNotification(
+        confession.recipient_fid,
+        "New reply",
+        "The anonymous sender replied to your thread",
+        `${appUrl}/app/c/${confessionId}`
+      ).catch(() => {});
+    } else if (senderRole === "recipient" && confession.sender_fid) {
+      // Recipient replied → notify the sender (if known)
+      sendNotification(
+        confession.sender_fid,
+        "New reply",
+        "Someone replied to your confession",
+        `${appUrl}/app/c/${confessionId}`
+      ).catch(() => {});
     }
 
     return NextResponse.json({ reply });
