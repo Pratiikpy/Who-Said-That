@@ -27,7 +27,29 @@ export function formatEth(wei: number | bigint): string {
 }
 
 export function copyToClipboard(text: string): Promise<void> {
-  return navigator.clipboard.writeText(text);
+  if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+    return navigator.clipboard.writeText(text).catch(() => {
+      // Fallback for WebViews where clipboard API may be restricted
+      fallbackCopy(text);
+    });
+  }
+  fallbackCopy(text);
+  return Promise.resolve();
+}
+
+function fallbackCopy(text: string): void {
+  try {
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand("copy");
+    document.body.removeChild(textarea);
+  } catch {
+    // Clipboard not available
+  }
 }
 
 export function classNames(...classes: (string | false | undefined | null)[]): string {

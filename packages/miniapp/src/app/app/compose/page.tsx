@@ -8,7 +8,7 @@ import { RecipientSearch } from "../../../components/RecipientSearch";
 import { useHaptics } from "../../../hooks/useHaptics";
 import { useToast } from "../../../components/Toast";
 import { useConfessionVault } from "../../../hooks/useConfessionVault";
-import { useSafeMiniKit } from "../../../hooks/useSafeMiniKit";
+import { useMiniKit } from "@coinbase/onchainkit/minikit";
 import { useCofheStore } from "../../../store/cofheStore";
 import { useWalletClient, usePublicClient } from "wagmi";
 import { CONFESSION_VAULT_ABI } from "../../../contracts/confessionVault";
@@ -18,7 +18,7 @@ import { sound } from "../../../lib/sound";
 
 export default function ComposePage() {
   const router = useRouter();
-  const { context } = useSafeMiniKit();
+  const { context } = useMiniKit();
   const { tap, submit, success } = useHaptics();
   const { toast } = useToast();
   const { generateMessageRef } = useConfessionVault();
@@ -107,9 +107,9 @@ export default function ComposePage() {
       }
 
       // Store confession in Supabase via authenticated API
-      const res = await fetch("/api/confessions/send", {
+      const { authFetch } = await import("../../../lib/api");
+      const res = await authFetch("/api/confessions/send", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           senderFid: senderFid || null,
           recipientFid: recipient.fid,

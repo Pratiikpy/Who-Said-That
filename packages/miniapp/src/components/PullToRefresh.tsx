@@ -149,6 +149,9 @@ export function PullToRefresh({ onRefresh, children }: PullToRefreshProps) {
         return;
       }
 
+      // Prevent native overscroll/bounce in Farcaster WebView
+      e.preventDefault();
+
       // Apply rubber-band resistance: diminishing returns past threshold
       const resistedDistance = deltaY < THRESHOLD
         ? deltaY

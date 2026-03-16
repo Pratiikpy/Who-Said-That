@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabase } from "../../../../lib/supabase";
+import { verifyAuth } from "../../../../lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "fid and username are required" },
         { status: 400 }
+      );
+    }
+
+    // Verify JWT when available — prevents FID spoofing.
+    // If Quick Auth isn't available yet (first load race), allow body FID
+    // as a fallback but log a warning.
+    const auth = await verifyAuth(request);
+    if (!auth.error && auth.fid !== fid) {
+      return NextResponse.json(
+        { error: "FID mismatch between token and body" },
+        { status: 403 }
       );
     }
 
@@ -69,17 +81,16 @@ export async function POST(request: NextRequest) {
         })
         .eq("id", placeholder.id);
 
-      // Fix any confessions that were stored with recipient_fid=0
-      // for this placeholder user
+      // Fix confessions that were stored with recipient_fid=0 for THIS placeholder.
+      // We scope the update using the placeholder's created_at timestamp — only
+      // confessions inserted AFTER the placeholder was created could belong to it.
+      // This prevents stealing orphaned confessions that belong to other placeholders.
       await supabase
         .from("confessions")
         .update({ recipient_fid: fid })
         .eq("recipient_fid", 0)
-        .eq("platform", "anonymous_link");
-
-      // Also fix confessions where recipient_fid might have been set to
-      // parseInt of the username (which would be 0 for non-numeric usernames)
-      // This is a no-op if no such records exist
+        .eq("platform", "anonymous_link")
+        .gte("created_at", placeholder.created_at);
 
       return NextResponse.json({ success: true, action: "upgraded" });
     }

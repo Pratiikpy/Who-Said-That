@@ -165,7 +165,8 @@ export default function CipherGrid({
       const rows = rowsRef.current;
       const cols = colsRef.current;
 
-      if (reducedMotionRef.current) {
+      // Pause animation when page is hidden (saves battery in Farcaster WebView)
+      if (reducedMotionRef.current || document.hidden) {
         rafRef.current = requestAnimationFrame(tick);
         return;
       }

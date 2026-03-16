@@ -380,7 +380,7 @@ export default function ConfessionDetailPage() {
 // ─── Guess Section ──────────────────────────────────────────────────
 
 function GuessSection({
-  confessionId: _confessionId,
+  confessionId,
   onchainId,
   onHintRefresh: _onHintRefresh,
 }: {
@@ -400,6 +400,33 @@ function GuessSection({
   const [guessing, setGuessing] = useState(false);
   const [revealed, setRevealed] = useState(false);
   const [revealedUsername, setRevealedUsername] = useState("");
+  const [_loadingGuesses, setLoadingGuesses] = useState(true);
+
+  // ── Load existing guesses from server on mount ──────────────
+  useEffect(() => {
+    async function loadGuesses() {
+      try {
+        const res = await fetch(`/api/guesses/${confessionId}`);
+        const data = await res.json();
+        if (data.guesses?.length) {
+          const loaded = data.guesses.map((g: { guess_fid: number; is_correct: boolean }) => ({
+            username: `fid:${g.guess_fid}`,
+            correct: g.is_correct,
+          }));
+          setGuesses(loaded);
+          const correct = data.guesses.find((g: { is_correct: boolean }) => g.is_correct);
+          if (correct) {
+            setRevealed(true);
+            setRevealedUsername(`fid:${correct.guess_fid}`);
+          }
+        }
+      } catch {
+        // Failed to load — start fresh
+      }
+      setLoadingGuesses(false);
+    }
+    loadGuesses();
+  }, [confessionId]);
 
   const guessesRemaining = MAX_GUESSES - guesses.length;
   const allUsed = guessesRemaining <= 0;
@@ -495,10 +522,20 @@ function GuessSection({
         }
       }
 
-      // Fallback: simulate if on-chain wasn't used
+      // Fallback: server-side guess verification for Supabase-only confessions
       if (!usedOnchain) {
-        await new Promise((r) => setTimeout(r, 2500));
-        isCorrect = false;
+        try {
+          const { authFetch } = await import("../../../../lib/api");
+          const guessRes = await authFetch(`/api/guesses/${confessionId}`, {
+            method: "POST",
+            body: JSON.stringify({ guessedFid: guessedUser.fid }),
+          });
+          const guessData = await guessRes.json();
+          isCorrect = guessData.correct === true;
+        } catch {
+          // Server verification failed — treat as wrong
+          isCorrect = false;
+        }
       }
 
     } catch {
