@@ -132,18 +132,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
       <main className="relative z-10 pb-20">{children}</main>
 
-      {/* Nav wrapper — slides out on scroll down via useScrollDirection */}
-      <div
-        style={{
-          transform: shouldHideNav ? "translateY(100%)" : "translateY(0)",
-          transition: "transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
-        }}
-      >
-        <BottomTabs />
-      </div>
-
-      {/* Onboarding disabled — was blocking clicks in Farcaster WebView */}
-      {/* <Onboarding /> */}
+      {/* BottomTabs handles its own transform — no wrapper div.
+          A parent with transform breaks position:fixed (CSS spec). */}
+      <BottomTabs hidden={shouldHideNav} />
     </div>
   );
 }
