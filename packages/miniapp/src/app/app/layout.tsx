@@ -5,7 +5,7 @@ import { useMiniKit } from "@coinbase/onchainkit/minikit";
 import { useCofhe } from "../../hooks/useCofhe";
 import { BottomTabs } from "../../components/BottomTabs";
 import { ConnectWalletButton } from "../../components/ConnectWalletButton";
-import { Onboarding } from "../../components/Onboarding";
+// import { Onboarding } from "../../components/Onboarding";
 import { useScrollDirection } from "../../hooks/useScrollDirection";
 import { useTimeTheme } from "../../hooks/useTimeTheme";
 import { useScrollHeader } from "../../hooks/useScrollHeader";
@@ -108,7 +108,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <BottomTabs />
       </div>
 
-      <Onboarding />
+      {/* Onboarding disabled — was blocking clicks in Farcaster WebView */}
+      {/* <Onboarding /> */}
     </div>
   );
 }
