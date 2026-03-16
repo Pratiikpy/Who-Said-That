@@ -253,7 +253,7 @@ export default function ConfessionDetailPage() {
   const isAnonymousLink = confession.is_anonymous_link;
 
   return (
-    <div className="px-5 py-4 pb-8 space-y-5">
+    <div className="px-5 py-4 space-y-5">
       {/* ── Back Button (48px touch target) ──────────────────── */}
       <Link
         href="/app"

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAccount } from "wagmi";
 import { useMiniKit } from "@coinbase/onchainkit/minikit";
 import { useCofhe } from "../../hooks/useCofhe";
@@ -16,7 +16,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { isConnected } = useAccount();
   const { context } = useMiniKit();
   const { isInitializing } = useCofhe();
+  const [showInitMsg, setShowInitMsg] = useState(false);
   const { shouldHideNav } = useScrollDirection();
+
+  // Only show "Initializing encryption..." after 3s delay, hide after 15s
+  useEffect(() => {
+    if (!isInitializing) { setShowInitMsg(false); return; }
+    const show = setTimeout(() => setShowInitMsg(true), 3000);
+    const hide = setTimeout(() => setShowInitMsg(false), 15000);
+    return () => { clearTimeout(show); clearTimeout(hide); };
+  }, [isInitializing]);
   const { gradientColor } = useTimeTheme();
   const { bgBlur, bgOpacity, inlineTitleOpacity } = useScrollHeader();
 
@@ -97,7 +106,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 Who Said That
               </p>
             )}
-            {isInitializing && (
+            {showInitMsg && (
               <p className="text-xs text-dim flex items-center gap-1.5 mt-0.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
                 Initializing encryption...
@@ -121,7 +130,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <main className="relative z-10">{children}</main>
+      <main className="relative z-10 pb-20">{children}</main>
 
       {/* Nav wrapper — slides out on scroll down via useScrollDirection */}
       <div
