@@ -106,23 +106,36 @@ export default function ComposePage() {
         }
       }
 
-      // Store confession in Supabase via authenticated API
-      const { authFetch } = await import("../../../lib/api");
-      const res = await authFetch("/api/confessions/send", {
-        method: "POST",
-        body: JSON.stringify({
-          senderFid: senderFid || null,
-          recipientFid: recipient.fid,
-          recipientUsername: recipient.username,
-          message: messageText,
-          platform: "farcaster",
-          onchainId,
-          senderHintData,
-        }),
+      // Store confession in Supabase via API
+      // Try authenticated first, fall back to plain fetch
+      let res: Response;
+      const payload = JSON.stringify({
+        senderFid: senderFid || null,
+        recipientFid: recipient.fid || 0,
+        recipientUsername: recipient.username,
+        message: messageText,
+        platform: "farcaster",
+        onchainId,
+        senderHintData,
       });
 
+      try {
+        const { authFetch } = await import("../../../lib/api");
+        res = await authFetch("/api/confessions/send", {
+          method: "POST",
+          body: payload,
+        });
+      } catch {
+        // authFetch failed — try plain fetch
+        res = await fetch("/api/confessions/send", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: payload,
+        });
+      }
+
       if (!res.ok) {
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
         throw new Error(data.error || "Failed to send");
       }
 
@@ -228,7 +241,7 @@ export default function ComposePage() {
         ) : (
           <motion.div
             key="compose"
-            initial={{ opacity: 0 }}
+            initial={false}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="space-y-6"

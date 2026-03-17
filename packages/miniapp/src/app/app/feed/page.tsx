@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { useMiniKit } from "@coinbase/onchainkit/minikit";
 import { supabase, type DbConfession } from "../../../lib/supabase";
@@ -184,11 +183,7 @@ export default function PublicFeedPage() {
 
       {/* Posts */}
       {posts.length === 0 ? (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="text-center py-20 space-y-4"
-        >
+        <div className="text-center py-20 space-y-4">
           <div className="w-16 h-16 rounded-2xl mx-auto flex items-center justify-center card">
             <svg
               width="28"
@@ -216,22 +211,14 @@ export default function PublicFeedPage() {
               Write a Confession
             </div>
           </Link>
-        </motion.div>
+        </div>
       ) : (
         <div className="space-y-3">
-          <AnimatePresence initial={false}>
-            {posts.map((post, index) => (
-              <motion.div
-                key={post.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: index < 5 ? index * 0.05 : 0 }}
-                layout
-              >
-                <PublicPostCard post={post} reactorFid={userFid} />
-              </motion.div>
-            ))}
-          </AnimatePresence>
+          {posts.map((post) => (
+            <div key={post.id}>
+              <PublicPostCard post={post} reactorFid={userFid} />
+            </div>
+          ))}
         </div>
       )}
     </div>

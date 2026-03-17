@@ -12,12 +12,13 @@ export async function POST(request: NextRequest) {
     // Rate limit: 10 confessions per minute per IP
     if (isRateLimited(request, 10, 60_000)) return rateLimitResponse();
 
-    // Verify JWT auth — get real sender FID from token, not from body
+    // Try JWT auth — get real sender FID from token. Fall back to client-provided FID
+    // since Quick Auth isn't available in all Farcaster clients.
     const auth = await verifyAuth(request);
-    const authenticatedFid = auth.error ? null : auth.fid; // Allow fallback for now
+    const authenticatedFid = auth.error ? null : auth.fid;
 
     const {
-      senderFid: _clientFid, // Ignored — use authenticatedFid instead
+      senderFid: clientFid, // Fallback when auth unavailable
       recipientFid,
       recipientUsername,
       message,
@@ -66,7 +67,7 @@ export async function POST(request: NextRequest) {
       .from("confessions")
       .insert({
         onchain_id: onchainId || null,
-        sender_fid: authenticatedFid || null,
+        sender_fid: authenticatedFid || clientFid || null,
         recipient_fid: resolvedRecipientFid || 0,
         message: message.trim(),
         platform: platform || "farcaster",
