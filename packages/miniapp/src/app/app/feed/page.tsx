@@ -277,12 +277,6 @@ function PublicPostCard({ post, reactorFid: _reactorFid }: { post: DbConfession;
     }
   };
 
-  // Unmask progress (placeholder data)
-  const unmaskCurrent = 0;
-  const unmaskGoal = 0.05;
-  const unmaskPercent =
-    unmaskGoal > 0 ? Math.min((unmaskCurrent / unmaskGoal) * 100, 100) : 0;
-
   return (
     <div className="card p-5 space-y-4">
       {/* Floating reaction particles */}
@@ -358,67 +352,13 @@ function PublicPostCard({ post, reactorFid: _reactorFid }: { post: DbConfession;
         })}
       </div>
 
-      {/* Unmask progress */}
-      <div className="space-y-2.5 pt-1">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
-            <svg
-              width="12"
-              height="12"
-              viewBox="0 0 24 24"
-              fill="none"
-              className="stroke-dim"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-              <path d="M7 11V7a5 5 0 0110 0v4" />
-            </svg>
-            <span className="text-xs font-medium text-dim">
-              Unmask Progress
-            </span>
-          </div>
-          <span className="text-xs font-mono text-dim">
-            {unmaskCurrent} / {unmaskGoal} ETH
-          </span>
-        </div>
-
-        {/* Progress bar */}
-        <div className="w-full h-1.5 rounded-full overflow-hidden bg-border-subtle">
-          <div
-            className="h-full rounded-full transition-all duration-300"
-            style={{
-              width: `${unmaskPercent}%`,
-              background:
-                unmaskPercent > 0
-                  ? "linear-gradient(90deg, #8B5CF6, #22C55E)"
-                  : "var(--color-border)",
-            }}
-          />
-        </div>
-
-        {/* Contribute button */}
-        <button
-          onClick={() => tap()}
-          className="w-full flex items-center justify-center gap-2 rounded-xl text-sm font-semibold transition-colors bg-accent/[0.08] text-accent border border-accent/15"
-          style={{ minHeight: "44px" }}
-        >
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <line x1="12" y1="1" x2="12" y2="23" />
-            <path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" />
-          </svg>
-          Contribute to Unmask
-        </button>
+      {/* Unmask — coming soon badge */}
+      <div className="flex items-center gap-1.5 pt-1">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" className="stroke-dim" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+          <path d="M7 11V7a5 5 0 0110 0v4" />
+        </svg>
+        <span className="text-xs text-dim">Unmask coming soon</span>
       </div>
     </div>
   );
