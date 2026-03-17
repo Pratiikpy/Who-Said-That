@@ -16,6 +16,8 @@ import { CONFESSION_VAULT_ADDRESS } from "../../../lib/constants";
 import type { FarcasterUser } from "../../../lib/neynar";
 import { sound } from "../../../lib/sound";
 
+type Mode = "private" | "public";
+
 export default function ComposePage() {
   const router = useRouter();
   const { context } = useMiniKit();
@@ -25,6 +27,8 @@ export default function ComposePage() {
   const { isInitialized: cofheReady } = useCofheStore();
   const { data: walletClient } = useWalletClient();
   const publicClient = usePublicClient();
+
+  const [mode, setMode] = useState<Mode>("private");
   const [recipient, setRecipient] = useState<FarcasterUser | null>(null);
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
@@ -35,10 +39,14 @@ export default function ComposePage() {
   const charRatio = charCount / MAX_CONFESSION_LENGTH;
   const isOverLimit = charCount > MAX_CONFESSION_LENGTH - 50;
   const isNearLimit = charCount > MAX_CONFESSION_LENGTH - 100;
-  const canSend = !!recipient && message.trim().length > 0 && !sending;
+
+  const canSend =
+    message.trim().length > 0 &&
+    !sending &&
+    (mode === "public" || !!recipient);
 
   const handleSend = async () => {
-    if (!canSend || !recipient) return;
+    if (!canSend) return;
     setError("");
     setSending(true);
     submit();
@@ -47,96 +55,123 @@ export default function ComposePage() {
     const messageText = message.trim();
 
     try {
-      // Compute sender hint data (anonymized stats for AI hints)
-      const senderHintData = senderFid ? {
-        follower_range: "unknown",
-        account_age_months: "unknown",
-        mutual_count: 0,
-        recent_interactions: 0,
-        platform: "farcaster",
-      } : null;
+      if (mode === "public") {
+        // Public post — simple API call, no FHE needed
+        let res: Response;
+        const payload = JSON.stringify({
+          senderFid: senderFid || null,
+          recipientFid: 0,
+          recipientUsername: null,
+          message: messageText,
+          platform: "farcaster",
+          onchainId: null,
+          senderHintData: null,
+          isPublic: true,
+        });
 
-      // Generate message reference hash for on-chain storage
-      const messageRef = generateMessageRef(messageText);
-
-      // Try on-chain encrypted send via CoFHE + ConfessionVault contract
-      let onchainId: number | null = null;
-
-      if (cofheReady && senderFid && walletClient && publicClient) {
         try {
-          // Step 1: Encrypt sender FID with FHE via cofhejs
-          const { cofhejs, Encryptable } = await import("cofhejs/web");
-          const encryptResult = await cofhejs.encrypt([Encryptable.uint32(BigInt(senderFid))]);
+          const { authFetch } = await import("../../../lib/api");
+          res = await authFetch("/api/confessions/send", {
+            method: "POST",
+            body: payload,
+          });
+        } catch {
+          res = await fetch("/api/confessions/send", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: payload,
+          });
+        }
 
-          if (encryptResult?.success && encryptResult.data?.[0]) {
-            const encryptedFid = encryptResult.data[0];
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error || "Failed to post");
+        }
+      } else {
+        // Private confession — with optional FHE encryption
+        const senderHintData = senderFid
+          ? {
+              follower_range: "unknown",
+              account_age_months: "unknown",
+              mutual_count: 0,
+              recent_interactions: 0,
+              platform: "farcaster",
+            }
+          : null;
 
-            // Step 2: Send encrypted confession to the contract on Base Sepolia
-            // The contract stores the FHE-encrypted sender FID (nobody can read it)
-            const txHash = await walletClient.writeContract({
-              address: CONFESSION_VAULT_ADDRESS,
-              abi: CONFESSION_VAULT_ABI,
-              functionName: "sendConfession",
-              args: [
-                { ...encryptedFid, signature: encryptedFid.signature as `0x${string}` },
-                BigInt(recipient.fid),     // uint256 — recipient FID (plaintext)
-                messageRef,                // bytes32 — hash pointing to Supabase message
-                0,                         // uint8 — platform (0 = Farcaster)
-              ],
-            });
+        const messageRef = generateMessageRef(messageText);
+        let onchainId: number | null = null;
 
-            // Step 3: Wait for tx confirmation
-            const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+        if (cofheReady && senderFid && walletClient && publicClient && recipient) {
+          try {
+            const { cofhejs, Encryptable } = await import("cofhejs/web");
+            const encryptResult = await cofhejs.encrypt([
+              Encryptable.uint32(BigInt(senderFid)),
+            ]);
 
-            // Step 4: Extract confession ID from ConfessionSent event
-            if (receipt.status === "success") {
-              // The contract auto-increments confessionCount
-              // Read the latest count as our confession ID
-              const count = await publicClient.readContract({
+            if (encryptResult?.success && encryptResult.data?.[0]) {
+              const encryptedFid = encryptResult.data[0];
+              const txHash = await walletClient.writeContract({
                 address: CONFESSION_VAULT_ADDRESS,
                 abi: CONFESSION_VAULT_ABI,
-                functionName: "getConfessionCount",
+                functionName: "sendConfession",
+                args: [
+                  {
+                    ...encryptedFid,
+                    signature: encryptedFid.signature as `0x${string}`,
+                  },
+                  BigInt(recipient.fid),
+                  messageRef,
+                  0,
+                ],
               });
-              onchainId = Number(count);
+              const receipt = await publicClient.waitForTransactionReceipt({
+                hash: txHash,
+              });
+              if (receipt.status === "success") {
+                const count = await publicClient.readContract({
+                  address: CONFESSION_VAULT_ADDRESS,
+                  abi: CONFESSION_VAULT_ABI,
+                  functionName: "getConfessionCount",
+                });
+                onchainId = Number(count);
+              }
             }
+          } catch (fheErr) {
+            console.warn("On-chain send failed, using API fallback:", fheErr);
           }
-        } catch (fheErr) {
-          // FHE/contract send failed — fall through to API-only
-          console.warn("On-chain send failed, using API fallback:", fheErr);
         }
-      }
 
-      // Store confession in Supabase via API
-      // Try authenticated first, fall back to plain fetch
-      let res: Response;
-      const payload = JSON.stringify({
-        senderFid: senderFid || null,
-        recipientFid: recipient.fid || 0,
-        recipientUsername: recipient.username,
-        message: messageText,
-        platform: "farcaster",
-        onchainId,
-        senderHintData,
-      });
-
-      try {
-        const { authFetch } = await import("../../../lib/api");
-        res = await authFetch("/api/confessions/send", {
-          method: "POST",
-          body: payload,
+        let res: Response;
+        const payload = JSON.stringify({
+          senderFid: senderFid || null,
+          recipientFid: recipient?.fid || 0,
+          recipientUsername: recipient?.username,
+          message: messageText,
+          platform: "farcaster",
+          onchainId,
+          senderHintData,
+          isPublic: false,
         });
-      } catch {
-        // authFetch failed — try plain fetch
-        res = await fetch("/api/confessions/send", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: payload,
-        });
-      }
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || "Failed to send");
+        try {
+          const { authFetch } = await import("../../../lib/api");
+          res = await authFetch("/api/confessions/send", {
+            method: "POST",
+            body: payload,
+          });
+        } catch {
+          res = await fetch("/api/confessions/send", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: payload,
+          });
+        }
+
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error || "Failed to send");
+        }
       }
 
       success();
@@ -170,111 +205,102 @@ export default function ComposePage() {
             transition={{ duration: 0.3 }}
             className="flex flex-col items-center justify-center py-16 space-y-6"
           >
-            {/* Success icon */}
             <motion.div
               initial={{ scale: 0, rotate: -180 }}
               animate={{ scale: 1, rotate: 0 }}
-              transition={{
-                type: "spring",
-                stiffness: 260,
-                damping: 20,
-                delay: 0.15,
-              }}
+              transition={{ type: "spring", stiffness: 260, damping: 20, delay: 0.15 }}
               className="w-20 h-20 rounded-2xl flex items-center justify-center"
               style={{
-                background:
-                  "linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(34, 197, 94, 0.05))",
+                background: "linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(34, 197, 94, 0.05))",
                 border: "1px solid rgba(34, 197, 94, 0.2)",
               }}
             >
-              <svg
-                width="36"
-                height="36"
-                viewBox="0 0 24 24"
-                fill="none"
-                className="stroke-neon"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" className="stroke-neon" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="20 6 9 17 4 12" />
               </svg>
             </motion.div>
 
-            {/* Heading */}
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.25 }}
-              className="text-center space-y-2"
-            >
+            <div className="text-center space-y-2">
               <h2 className="text-2xl font-bold font-display text-foreground">
-                Confession Sent
+                {mode === "public" ? "Posted!" : "Confession Sent"}
               </h2>
               <p className="text-muted text-base leading-relaxed max-w-[280px] mx-auto">
-                @{recipient?.username} will see your message but never who you
-                are. They get 3 guesses + AI hints.
+                {mode === "public"
+                  ? "Your anonymous confession is now on the public feed."
+                  : `@${recipient?.username} will see your message but never who you are.`}
               </p>
-            </motion.div>
+            </div>
 
-            {/* Actions */}
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.35 }}
-              className="w-full max-w-xs space-y-3 pt-2"
-            >
+            <div className="w-full max-w-xs space-y-3 pt-2">
               <button onClick={handleReset} className="btn btn-ghost w-full">
-                Send Another
+                {mode === "public" ? "Post Another" : "Send Another"}
               </button>
               <button
                 onClick={() => {
                   tap();
-                  router.push("/app");
+                  router.push(mode === "public" ? "/app/feed" : "/app");
                 }}
                 className="btn btn-primary w-full"
               >
-                Go to Inbox
+                {mode === "public" ? "View Feed" : "Go to Inbox"}
               </button>
-            </motion.div>
+            </div>
           </motion.div>
         ) : (
-          <motion.div
-            key="compose"
-            initial={false}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="space-y-6"
-          >
+          <div className="space-y-6">
             {/* Title */}
             <h2 className="text-2xl font-bold font-display text-foreground">
               New Confession
             </h2>
 
-            {/* Recipient */}
-            <div className="space-y-2.5">
-              <label className="section-label">
-                To
-              </label>
-              <RecipientSearch
-                selected={recipient}
-                onSelect={(user) => {
-                  tap();
-                  setRecipient(user);
-                }}
-                onClear={() => {
-                  tap();
-                  setRecipient(null);
-                }}
-              />
+            {/* Mode Toggle */}
+            <div className="flex rounded-xl bg-surface border border-border p-1 gap-1">
+              <button
+                onClick={() => { tap(); setMode("private"); }}
+                className={`flex-1 flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all ${
+                  mode === "private"
+                    ? "bg-accent text-white shadow-sm"
+                    : "text-muted"
+                }`}
+                style={{ WebkitTapHighlightColor: "transparent" }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                  <path d="M7 11V7a5 5 0 0110 0v4" />
+                </svg>
+                To Someone
+              </button>
+              <button
+                onClick={() => { tap(); setMode("public"); setRecipient(null); }}
+                className={`flex-1 flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all ${
+                  mode === "public"
+                    ? "bg-accent text-white shadow-sm"
+                    : "text-muted"
+                }`}
+                style={{ WebkitTapHighlightColor: "transparent" }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+                </svg>
+                Public Feed
+              </button>
             </div>
 
-            {/* Message textarea */}
+            {/* Recipient — only in private mode */}
+            {mode === "private" && (
+              <div className="space-y-2.5">
+                <label className="section-label">To</label>
+                <RecipientSearch
+                  selected={recipient}
+                  onSelect={(user) => { tap(); setRecipient(user); }}
+                  onClear={() => { tap(); setRecipient(null); }}
+                />
+              </div>
+            )}
+
+            {/* Message */}
             <div className="space-y-2.5">
-              <label
-                htmlFor="confession-text"
-                className="section-label"
-              >
+              <label htmlFor="confession-text" className="section-label">
                 Your Message
               </label>
               <div
@@ -289,21 +315,22 @@ export default function ComposePage() {
                     setMessage(e.target.value.slice(0, MAX_CONFESSION_LENGTH))
                   }
                   onFocus={() => { tap(); sound.composeFocus(); }}
-                  placeholder="Type something anonymous..."
-                  rows={6}
+                  placeholder={
+                    mode === "public"
+                      ? "Share something anonymously with the world..."
+                      : "Type something anonymous..."
+                  }
+                  rows={5}
                   autoCapitalize="sentences"
                   className="w-full bg-transparent text-foreground text-base leading-relaxed p-4 resize-none placeholder:text-dim focus:outline-none"
-                  style={{ minHeight: "168px" }}
+                  style={{ minHeight: "140px" }}
                 />
-                {/* Character counter bar */}
                 <div className="px-4 pb-3 flex items-center justify-between">
-                  {/* Progress bar */}
                   <div className="flex-1 mr-4">
                     <div className="h-1 rounded-full overflow-hidden bg-border-subtle">
-                      <motion.div
-                        className="h-full rounded-full"
-                        initial={false}
-                        animate={{
+                      <div
+                        className="h-full rounded-full transition-all duration-150"
+                        style={{
                           width: `${Math.min(charRatio * 100, 100)}%`,
                           backgroundColor: isOverLimit
                             ? "var(--color-danger)"
@@ -311,18 +338,12 @@ export default function ComposePage() {
                               ? "var(--color-warm)"
                               : "var(--color-accent)",
                         }}
-                        transition={{ duration: 0.15 }}
                       />
                     </div>
                   </div>
-                  {/* Count */}
                   <span
                     className={`text-xs font-mono tabular-nums ${
-                      isOverLimit
-                        ? "text-danger"
-                        : isNearLimit
-                          ? "text-warm"
-                          : "text-dim"
+                      isOverLimit ? "text-danger" : isNearLimit ? "text-warm" : "text-dim"
                     }`}
                   >
                     {charCount}/{MAX_CONFESSION_LENGTH}
@@ -332,36 +353,16 @@ export default function ComposePage() {
             </div>
 
             {/* Error */}
-            <AnimatePresence>
-              {error && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="overflow-hidden"
-                >
-                  <div
-                    className="p-3.5 rounded-xl text-sm text-center flex items-center justify-center gap-2 text-danger bg-danger/10 border border-danger/20"
-                  >
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <circle cx="12" cy="12" r="10" />
-                      <line x1="15" y1="9" x2="9" y2="15" />
-                      <line x1="9" y1="9" x2="15" y2="15" />
-                    </svg>
-                    {error}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            {error && (
+              <div className="p-3.5 rounded-xl text-sm text-center flex items-center justify-center gap-2 text-danger bg-danger/10 border border-danger/20">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="15" y1="9" x2="9" y2="15" />
+                  <line x1="9" y1="9" x2="15" y2="15" />
+                </svg>
+                {error}
+              </div>
+            )}
 
             {/* Send button */}
             <button
@@ -371,53 +372,35 @@ export default function ComposePage() {
             >
               {sending ? (
                 <span className="flex items-center justify-center gap-2.5">
-                  <svg
-                    className="animate-spin"
-                    width="18"
-                    height="18"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                  >
+                  <svg className="animate-spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                     <path d="M21 12a9 9 0 11-6.219-8.56" />
                   </svg>
-                  Encrypting & Sending...
+                  {mode === "public" ? "Posting..." : "Encrypting & Sending..."}
                 </span>
               ) : (
                 <span className="flex items-center justify-center gap-2">
-                  <svg
-                    width="18"
-                    height="18"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <rect
-                      x="3"
-                      y="11"
-                      width="18"
-                      height="11"
-                      rx="2"
-                      ry="2"
-                    />
-                    <path d="M7 11V7a5 5 0 0110 0v4" />
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    {mode === "public" ? (
+                      <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+                    ) : (
+                      <>
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                        <path d="M7 11V7a5 5 0 0110 0v4" />
+                      </>
+                    )}
                   </svg>
-                  Send Anonymously
+                  {mode === "public" ? "Post to Feed" : "Send Anonymously"}
                 </span>
               )}
             </button>
 
             {/* Privacy note */}
             <p className="text-xs text-center leading-relaxed text-dim">
-              Your identity is encrypted with FHE.
-              <br />
-              Even the contract can&apos;t see who you are.
+              {mode === "public"
+                ? "Your post is anonymous. No one can see who posted it."
+                : "Your identity is encrypted with FHE. Even the contract can\u2019t see who you are."}
             </p>
-          </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </div>

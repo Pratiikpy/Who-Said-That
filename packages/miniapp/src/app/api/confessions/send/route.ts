@@ -26,6 +26,7 @@ export async function POST(request: NextRequest) {
       onchainId,
       txHash: _txHash,
       senderHintData,
+      isPublic,
     } = await request.json();
 
     if (!message?.trim()) {
@@ -36,7 +37,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Message too long" }, { status: 400 });
     }
 
-    if (!recipientFid && !recipientUsername) {
+    if (!isPublic && !recipientFid && !recipientUsername) {
       return NextResponse.json({ error: "Recipient is required" }, { status: 400 });
     }
 
@@ -72,7 +73,7 @@ export async function POST(request: NextRequest) {
         message: message.trim(),
         platform: platform || "farcaster",
         is_anonymous_link: false, // This is an authenticated send
-        is_public: false,
+        is_public: !!isPublic,
         sender_hint_data: senderHintData || null,
         moderation_status: "approved",
         moderation_score: modResult.score,

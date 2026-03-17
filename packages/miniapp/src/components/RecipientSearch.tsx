@@ -14,9 +14,9 @@ export function RecipientSearch({ onSelect, selected, onClear }: RecipientSearch
   const [results, setResults] = useState<FarcasterUser[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
-  const [showDropdown, setShowDropdown] = useState(false);
+  const [focused, setFocused] = useState(false);
   const debounceRef = useRef<NodeJS.Timeout>(undefined);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const search = useCallback(async (q: string) => {
     if (q.length < 2) {
@@ -24,7 +24,6 @@ export function RecipientSearch({ onSelect, selected, onClear }: RecipientSearch
       setSearched(false);
       return;
     }
-
     setLoading(true);
     try {
       const res = await fetch(`/api/users/search?q=${encodeURIComponent(q)}`);
@@ -48,12 +47,28 @@ export function RecipientSearch({ onSelect, selected, onClear }: RecipientSearch
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [query, search]);
 
-  // Allow using typed username directly when search returns no results
+  // Close dropdown on outside click — use mousedown on document instead of
+  // a full-screen overlay div (which blocks all other touches)
+  useEffect(() => {
+    if (!focused) return;
+    function handleClickOutside(e: MouseEvent | TouchEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setFocused(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
+  }, [focused]);
+
   const handleUseTypedUsername = () => {
     const username = query.trim().replace(/^@/, "");
     if (username.length < 2) return;
     onSelect({
-      fid: 0, // Will be resolved server-side
+      fid: 0,
       username,
       display_name: username,
       pfp_url: "",
@@ -61,10 +76,12 @@ export function RecipientSearch({ onSelect, selected, onClear }: RecipientSearch
       following_count: 0,
     });
     setQuery("");
-    setShowDropdown(false);
+    setFocused(false);
   };
 
-  // If a user is selected, show their chip
+  const showDropdown = focused && (results.length > 0 || (searched && results.length === 0 && query.length >= 2));
+
+  // Selected chip
   if (selected) {
     return (
       <div className="flex items-center gap-3 p-3 rounded-2xl bg-surface border border-border">
@@ -84,9 +101,7 @@ export function RecipientSearch({ onSelect, selected, onClear }: RecipientSearch
           </div>
         )}
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-foreground truncate">
-            {selected.display_name}
-          </p>
+          <p className="text-sm font-semibold text-foreground truncate">{selected.display_name}</p>
           <p className="text-xs text-dim">
             @{selected.username}
             {selected.follower_count > 0 && ` · ${selected.follower_count.toLocaleString()} followers`}
@@ -104,20 +119,19 @@ export function RecipientSearch({ onSelect, selected, onClear }: RecipientSearch
   }
 
   return (
-    <div className="relative">
+    <div className="relative" ref={containerRef}>
       {/* Search input */}
       <div className="relative">
         <span className="absolute left-4 top-1/2 -translate-y-1/2 text-dim">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         </span>
         <input
-          ref={inputRef}
           value={query}
           onChange={(e) => {
             setQuery(e.target.value.replace("@", ""));
-            setShowDropdown(true);
+            setFocused(true);
           }}
-          onFocus={() => setShowDropdown(true)}
+          onFocus={() => setFocused(true)}
           placeholder="Type a Farcaster username..."
           autoCapitalize="none"
           autoComplete="off"
@@ -130,17 +144,16 @@ export function RecipientSearch({ onSelect, selected, onClear }: RecipientSearch
         )}
       </div>
 
-      {/* Dropdown */}
+      {/* Dropdown — no full-screen overlay */}
       {showDropdown && (
-        <div className="absolute z-50 left-0 right-0 mt-2 rounded-2xl bg-surface-elevated border border-border overflow-hidden shadow-elevated" style={{ maxHeight: "320px", overflowY: "auto" }}>
-          {/* Search results */}
+        <div className="absolute z-50 left-0 right-0 mt-2 rounded-2xl bg-surface-elevated border border-border overflow-hidden shadow-elevated" style={{ maxHeight: "280px", overflowY: "auto" }}>
           {results.map((user, i) => (
             <button
               key={user.fid}
               onClick={() => {
                 onSelect(user);
                 setQuery("");
-                setShowDropdown(false);
+                setFocused(false);
               }}
               className="w-full flex items-center gap-3 p-3 active:bg-glass-hover transition-colors text-left"
               style={{ WebkitTapHighlightColor: "transparent", minHeight: "52px" }}
@@ -155,13 +168,11 @@ export function RecipientSearch({ onSelect, selected, onClear }: RecipientSearch
                 <p className="text-sm font-medium text-foreground truncate">{user.display_name}</p>
                 <p className="text-xs text-dim truncate">@{user.username} · {user.follower_count.toLocaleString()} followers</p>
               </div>
-              {i === 0 && (
-                <span className="text-[11px] text-accent font-medium flex-shrink-0">Match</span>
-              )}
+              {i === 0 && <span className="text-[11px] text-accent font-medium flex-shrink-0">Match</span>}
             </button>
           ))}
 
-          {/* "Use this username" fallback when no results */}
+          {/* Fallback: use typed username */}
           {searched && results.length === 0 && query.length >= 2 && (
             <button
               onClick={handleUseTypedUsername}
@@ -175,12 +186,8 @@ export function RecipientSearch({ onSelect, selected, onClear }: RecipientSearch
                 </svg>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground">
-                  Send to @{query}
-                </p>
-                <p className="text-xs text-dim">
-                  Use this username even if not found
-                </p>
+                <p className="text-sm font-medium text-foreground">Send to @{query}</p>
+                <p className="text-xs text-dim">Use this username</p>
               </div>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-accent flex-shrink-0">
                 <line x1="5" y1="12" x2="19" y2="12" />
@@ -188,22 +195,7 @@ export function RecipientSearch({ onSelect, selected, onClear }: RecipientSearch
               </svg>
             </button>
           )}
-
-          {/* Hint when typing */}
-          {!searched && query.length > 0 && query.length < 2 && (
-            <div className="p-4 text-center">
-              <p className="text-xs text-dim">Type at least 2 characters</p>
-            </div>
-          )}
         </div>
-      )}
-
-      {/* Close dropdown on outside click */}
-      {showDropdown && (
-        <div
-          className="fixed inset-0 z-40"
-          onClick={() => setShowDropdown(false)}
-        />
       )}
     </div>
   );
